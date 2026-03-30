@@ -77,35 +77,17 @@ const initMap = () => {
 
 const fetchMapData = async () => {
     try {
-        const [nowRes, psiRes, uvRes, tempRes] = await Promise.all([
-            fetch(NOW_URL), fetch(PSI_URL), fetch(UV_URL), fetch(TEMP_URL)
-        ]);
-
-        if (!nowRes.ok) return;
-        const nowData = (await nowRes.json()).data;
+        const res = await fetch(NOW_URL);
+        if (!res.ok) return;
+        const nowData = (await res.json()).data;
         const forecasts = nowData.items[0].forecasts;
         
-        let regionalPsi = {};
-        if (psiRes.ok) regionalPsi = (await psiRes.json()).data.items[0].readings.psi_twenty_four_hourly;
-
-        let currentUv = '--';
-        if (uvRes.ok) currentUv = (await uvRes.json()).data.records[0].index[0].value;
-
-        let temps = [];
-        if (tempRes.ok) temps = (await tempRes.json()).data.items[0].readings;
-
         mapMarkers.forEach(m => map.removeLayer(m));
         mapMarkers = [];
 
         nowData.area_metadata.forEach(area => {
             const forecast = forecasts.find(f => f.area === area.name);
             if (!forecast) return;
-
-            const region = getRegion(area.name);
-            const psi = regionalPsi[region] || '--';
-            
-            // Find nearby temperature (rough matching)
-            const areaTemp = temps.find(t => t.stationId.includes(area.name.substring(0, 4))) || temps[0];
 
             const icon = L.divIcon({
                 className: 'area-weather-label',
@@ -115,20 +97,55 @@ const fetchMapData = async () => {
 
             const marker = L.marker([area.label_location.latitude, area.label_location.longitude], { icon })
                 .bindPopup(`
-                    <div style="font-family: inherit;">
+                    <div id="popup-${area.name.replace(/\s+/g, '-')}" style="font-family: inherit; min-width: 120px;">
                         <strong style="font-size: 1.1rem; color: var(--accent-blue);">${area.name}</strong><br/>
-                        <div style="margin-top: 5px; line-height: 1.5;">
-                            <span>✨ ${forecast.forecast}</span><br/>
+                        <div style="margin-top: 5px; color: var(--text-secondary);">✨ ${forecast.forecast}</div>
+                        <div class="popup-loading" style="font-size: 0.8rem; margin-top: 5px; opacity: 0.6;">Loading latest details...</div>
+                    </div>
+                `)
+                .addTo(map);
+
+            // Fetch details only when clicked
+            marker.on('click', async () => {
+                const popupId = `popup-${area.name.replace(/\s+/g, '-')}`;
+                const popupEl = document.getElementById(popupId);
+                if (!popupEl || popupEl.querySelector('.popup-details')) return;
+
+                try {
+                    const [psiRes, uvRes, tempRes] = await Promise.all([
+                        fetch(PSI_URL), fetch(UV_URL), fetch(TEMP_URL)
+                    ]);
+
+                    const regionalPsi = (await psiRes.json()).data.items[0].readings.psi_twenty_four_hourly;
+                    const currentUv = (await uvRes.json()).data.records[0].index[0].value;
+                    const temps = (await tempRes.json()).data.items[0].readings;
+
+                    const region = getRegion(area.name);
+                    const psi = regionalPsi[region] || '--';
+                    const areaTemp = temps.find(t => t.stationId.includes(area.name.substring(0, 4))) || temps[0];
+
+                    const detailsHtml = `
+                        <div class="popup-details" style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; line-height: 1.5;">
                             <span>🌡️ Temp: ${areaTemp ? areaTemp.value : '--'}°C</span><br/>
                             <span>😷 PSI: ${psi}</span><br/>
                             <span>☀️ UV: ${currentUv}</span>
                         </div>
-                    </div>
-                `)
-                .addTo(map);
+                    `;
+                    
+                    const loadingEl = popupEl.querySelector('.popup-loading');
+                    if (loadingEl) loadingEl.remove();
+                    popupEl.innerHTML += detailsHtml;
+                    
+                } catch (err) {
+                    console.warn('Click fetch error:', err);
+                }
+            });
+            
             mapMarkers.push(marker);
         });
-    } catch (e) { console.warn('Map data error:', e); }
+    } catch (e) {
+        console.warn('Map data error:', e);
+    }
 };
 
 const setupLocateMe = () => {

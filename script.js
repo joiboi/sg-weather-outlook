@@ -2,7 +2,7 @@ const API_URL = 'https://api-open.data.gov.sg/v2/real-time/api/four-day-outlook'
 const PSI_URL = 'https://api-open.data.gov.sg/v2/real-time/api/psi';
 const UV_URL = 'https://api-open.data.gov.sg/v2/real-time/api/uv';
 const NOW_URL = 'https://api-open.data.gov.sg/v2/real-time/api/two-hr-forecast';
-const TEMP_URL = 'https://api-open.data.gov.sg/v2/real-time/api/weather?api=air-temperature';
+const TEMP_URL = 'https://api-open.data.gov.sg/v2/real-time/api/air-temperature';
 const RAIN_URL = 'https://api-open.data.gov.sg/v2/real-time/api/rainfall';
 const LIGHTNING_URL = 'https://api-open.data.gov.sg/v2/real-time/api/weather?api=lightning';
 
@@ -13,28 +13,17 @@ let mapMarkers = [];
 // Improved Icon Mapping
 const getWeatherIcon = (code) => {
     const iconMap = {
-        'PC': '⛅', // Partly Cloudy
-        'PS': '🌦️', // Passing Showers
-        'TS': '⛈️', // Thundery Showers
-        'CL': '☀️', // Clear
-        'CD': '☁️', // Cloudy
-        'OC': '☁️', // Overcast
-        'RA': '🌧️', // Rain
-        'LR': '🌦️', // Light Rain
-        'HR': '🌧️', // Heavy Rain
-        'SW': '🏖️', // Sunny
-        'FA': '☀️', // Fair
+        'PC': '⛅', 'PS': '🌦️', 'TS': '⛈️', 'CL': '☀️', 'CD': '☁️', 'OC': '☁️',
+        'RA': '🌧️', 'LR': '🌦️', 'HR': '🌧️', 'SW': '🏖️', 'FA': '☀️'
     };
     const cleanCode = code.toUpperCase().trim();
     if (iconMap[cleanCode]) return iconMap[cleanCode];
-
     if (cleanCode.includes('THUNDERY')) return '⛈️';
     if (cleanCode.includes('CLOUDY')) return '☁️';
     if (cleanCode.includes('PARTLY CLOUDY')) return '⛅';
     if (cleanCode.includes('SHOWER')) return '🌦️';
     if (cleanCode.includes('RAIN')) return '🌧️';
     if (cleanCode.includes('FAIR') || cleanCode.includes('CLEAR')) return '☀️';
-
     return '⛅';
 };
 
@@ -67,7 +56,6 @@ const updateStatusItem = (id, text, className) => {
     if (className) el.className = 'status-item ' + className;
 };
 
-// Map & Geolocation Initialization
 const initMap = () => {
     if (map) return;
     map = L.map('map', { zoomControl: false, attributionControl: false }).setView([1.3521, 103.8198], 11);
@@ -97,15 +85,14 @@ const fetchMapData = async () => {
 
             const marker = L.marker([area.label_location.latitude, area.label_location.longitude], { icon })
                 .bindPopup(`
-                    <div id="popup-${area.name.replace(/\s+/g, '-')}" style="font-family: inherit; min-width: 120px;">
+                    <div id="popup-${area.name.replace(/\s+/g, '-')}" style="font-family: inherit; min-width: 140px;">
                         <strong style="font-size: 1.1rem; color: var(--accent-blue);">${area.name}</strong><br/>
                         <div style="margin-top: 5px; color: var(--text-secondary);">✨ ${forecast.forecast}</div>
-                        <div class="popup-loading" style="font-size: 0.8rem; margin-top: 5px; opacity: 0.6;">Loading latest details...</div>
+                        <div class="popup-loading" style="font-size: 0.8rem; margin-top: 5px; opacity: 0.6;">Loading local climate...</div>
                     </div>
                 `)
                 .addTo(map);
 
-            // Fetch details only when clicked
             marker.on('click', async () => {
                 const popupId = `popup-${area.name.replace(/\s+/g, '-')}`;
                 const popupEl = document.getElementById(popupId);
@@ -122,25 +109,19 @@ const fetchMapData = async () => {
 
                     const regionalPsi = psiData.data.items[0].readings.psi_twenty_four_hourly;
                     const currentUv = uvData.data.records[0].index[0].value;
-                    const temps = tempJson.data.items[0].readings;
-                    const stations = tempJson.data.metadata.stations;
+                    const stations = tempJson.data.stations;
+                    const temps = tempJson.data.readings[0].data;
 
-                    // Proximity-based matching for Temperature
-                    const getDistance = (lat1, lon1, lat2, lon2) => {
-                        return Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2));
-                    };
+                    const getDistance = (lat1, lon1, lat2, lon2) => Math.sqrt(Math.pow(lat2-lat1, 2) + Math.pow(lon2-lon1, 2));
 
                     let closestStation = stations[0];
                     let minDistance = Infinity;
                     stations.forEach(s => {
                         const dist = getDistance(area.label_location.latitude, area.label_location.longitude, s.location.latitude, s.location.longitude);
-                        if (dist < minDistance) {
-                            minDistance = dist;
-                            closestStation = s;
-                        }
+                        if (dist < minDistance) { minDistance = dist; closestStation = s; }
                     });
 
-                    const areaTemp = temps.find(t => t.stationId === closestStation.id) || temps[0];
+                    const areaTemp = temps.find(t => t.stationId === closestStation.id);
                     const region = getRegion(area.name);
                     const psi = regionalPsi[region] || '--';
 
@@ -151,21 +132,14 @@ const fetchMapData = async () => {
                             <span>☀️ UV Index: ${currentUv}</span>
                         </div>
                     `;
-                    
                     const loadingEl = popupEl.querySelector('.popup-loading');
                     if (loadingEl) loadingEl.remove();
                     popupEl.innerHTML += detailsHtml;
-                    
-                } catch (err) {
-                    console.warn('Click fetch error:', err);
-                }
+                } catch (err) { console.warn('Detail fetch error:', err); }
             });
-            
             mapMarkers.push(marker);
         });
-    } catch (e) {
-        console.warn('Map data error:', e);
-    }
+    } catch (e) { console.warn('Map data error:', e); }
 };
 
 const setupLocateMe = () => {
@@ -222,11 +196,7 @@ const checkWeatherAlerts = async () => {
         const [rainRes, lightRes] = await Promise.all([fetch(RAIN_URL), fetch(LIGHTNING_URL)]);
         if (rainRes.ok && (await rainRes.json()).data.items[0].readings.some(r => r.value > 0.5)) alerts.push("Heavy rain detected.");
         if (lightRes.ok && ((await lightRes.json()).data.items[0].readings || []).length > 0) alerts.push("Lightning spotted.");
-        
-        if (alerts.length > 0) {
-            alertText.textContent = alerts.join(" ") + " Stay safe!";
-            banner.classList.remove('hidden');
-        } else banner.classList.add('hidden');
+        if (alerts.length > 0) { alertText.textContent = alerts.join(" ") + " Stay safe!"; banner.classList.remove('hidden'); } else banner.classList.add('hidden');
     } catch (e) {}
 };
 
@@ -245,9 +215,7 @@ const fetchWeather = async () => {
             card.style.animationDelay = `${index * 0.1}s`;
             container.appendChild(card);
         });
-    } catch (error) {
-        container.innerHTML = '<div class="loader"><p>Connection trouble. Retrying...</p></div>';
-    }
+    } catch (error) { container.innerHTML = '<div class="loader"><p>Connection trouble. Retrying...</p></div>'; }
 };
 
 document.addEventListener('DOMContentLoaded', fetchWeather);

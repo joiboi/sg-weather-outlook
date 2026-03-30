@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SG Weather Outlook | 4-Day Forecast</title>
+    <meta name="description" content="View the real-time 4-day weather outlook for Singapore with detailed temperature, humidity, and wind forecasts.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <main class="container">
+        <header>
+            <h1 id="main-title">Singapore Weather Outlook</h1>
+            <p class="subtitle">4-Day Real-Time Forecast</p>
+            <div id="last-updated" class="last-updated">Updating...</div>
+        </header>
+
+        <section id="forecast-container" class="forecast-grid">
+            <!-- Forecast cards will be injected here -->
+            <div class="loader">
+                <div class="spinner"></div>
+                <p>Fetching latest weather data...</p>
+            </div>
+        </section>
+
+        <footer>
+            <p>Data provided by <a href="https://data.gov.sg" target="_blank" rel="noopener noreferrer">data.gov.sg</a></p>
+        </footer>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

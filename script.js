@@ -118,12 +118,50 @@ const createForecastCard = (forecast) => {
     return card;
 };
 
+const RAIN_URL = 'https://api-open.data.gov.sg/v2/real-time/api/rainfall';
+const LIGHTNING_URL = 'https://api-open.data.gov.sg/v2/real-time/api/weather?api=lightning';
+
+const checkWeatherAlerts = async () => {
+    const banner = document.getElementById('alert-banner');
+    const alertText = document.getElementById('alert-text');
+    let alerts = [];
+
+    try {
+        // Check Rain
+        const rainRes = await fetch(RAIN_URL);
+        if (rainRes.ok) {
+            const rainData = await rainRes.json();
+            const readings = rainData.data.items[0].readings;
+            const isRaining = readings.some(r => r.value > 0.5); // Threshold for alert
+            if (isRaining) alerts.push("Moderate to heavy rain detected.");
+        }
+
+        // Check Lightning
+        const lightningRes = await fetch(LIGHTNING_URL);
+        if (lightningRes.ok) {
+            const lightningData = await lightningRes.json();
+            const events = lightningData.data.items[0].readings || [];
+            if (events.length > 0) alerts.push("Lightning activity spotted.");
+        }
+
+        if (alerts.length > 0) {
+            alertText.textContent = alerts.join(" ") + " Stay safe!";
+            banner.classList.remove('hidden');
+        } else {
+            banner.classList.add('hidden');
+        }
+    } catch (e) {
+        console.warn('Alerts fetch error:', e);
+    }
+};
+
 const fetchWeather = async () => {
     const container = document.getElementById('forecast-container');
     const updateTime = document.getElementById('last-updated');
     
     // Launch environmental fetches in background
     fetchEnvironmentalData();
+    checkWeatherAlerts();
 
     try {
         const response = await fetch(API_URL);

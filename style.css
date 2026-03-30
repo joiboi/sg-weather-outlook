@@ -121,6 +121,38 @@ h1 {
     opacity: 0.8;
 }
 
+/* Status Bar */
+.status-bar {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    animation: fadeInDown 0.8s ease-out 0.1s both;
+}
+
+.status-item {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 100px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.status-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.status-good { color: var(--accent-mint); text-shadow: 0 0 10px rgba(45, 212, 191, 0.3); }
+.status-moderate { color: var(--accent-gold); text-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
+.status-unhealthy { color: var(--accent-sunset); text-shadow: 0 0 10px rgba(244, 114, 182, 0.3); }
+
 /* Forecast Grid & Cards */
 .forecast-grid {
     display: grid;

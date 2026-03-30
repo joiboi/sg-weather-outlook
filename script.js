@@ -1,4 +1,7 @@
 const API_URL = 'https://api-open.data.gov.sg/v2/real-time/api/four-day-outlook';
+const PSI_URL = 'https://api-open.data.gov.sg/v2/real-time/api/psi';
+const UV_URL = 'https://api-open.data.gov.sg/v2/real-time/api/uv';
+const NOW_URL = 'https://api-open.data.gov.sg/v2/real-time/api/two-hr-forecast';
 
 // Helper function to map weather codes to emoji/icons
 const getWeatherIcon = (code) => {
@@ -11,13 +14,14 @@ const getWeatherIcon = (code) => {
         'HR': '🌧️', // Heavy Rain
         'LR': '🌦️', // Light Rain
         'SW': '🏖️', // Sunny
+        'FA': '🌤️', // Fair
     };
-    return iconMap[code] || '⛅';
+    return iconMap[code.toUpperCase()] || iconMap[Object.keys(iconMap).find(k => code.toUpperCase().includes(k))] || '⛅';
 };
 
 // Formats the timestamp for the "Last Updated" display
 const formatTimestamp = (isoStr) => {
-    const date = new Date(isoStr);
+    const date = isoStr ? new Date(isoStr) : new Date();
     return date.toLocaleString('en-SG', {
         day: '2-digit',
         month: 'short',
@@ -28,20 +32,50 @@ const formatTimestamp = (isoStr) => {
     });
 };
 
-// Mock data in case the API is down or rate-limited
-const getMockData = () => ({
-    data: {
-        records: [{
-            updatedTimestamp: new Date().toISOString(),
-            forecasts: [
-                { day: 'Friday', forecast: { text: 'Partly Cloudy', code: 'PC' }, temperature: { low: 26, high: 33 }, relativeHumidity: { low: 65, high: 90 }, wind: { direction: 'SSW', speed: { low: 10, high: 20 } } },
-                { day: 'Saturday', forecast: { text: 'Thundery Showers', code: 'TS' }, temperature: { low: 25, high: 32 }, relativeHumidity: { low: 70, high: 95 }, wind: { direction: 'W', speed: { low: 15, high: 25 } } },
-                { day: 'Sunday', forecast: { text: 'Passing Showers', code: 'PS' }, temperature: { low: 26, high: 34 }, relativeHumidity: { low: 60, high: 85 }, wind: { direction: 'SW', speed: { low: 5, high: 15 } } },
-                { day: 'Monday', forecast: { text: 'Cloudy', code: 'CD' }, temperature: { low: 24, high: 30 }, relativeHumidity: { low: 75, high: 100 }, wind: { direction: 'N', speed: { low: 10, high: 20 } } }
-            ]
-        }]
+const updateStatusItem = (id, text, className) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = text;
+    el.className = 'status-item ' + (className || '');
+};
+
+const fetchEnvironmentalData = async () => {
+    try {
+        // PSI
+        const psiRes = await fetch(PSI_URL);
+        if (psiRes.ok) {
+            const psiData = await psiRes.json();
+            const readings = psiData.data.items[0].readings.psi_twenty_four_hourly;
+            const centralPsi = readings.central;
+            let psiClass = 'status-good';
+            if (centralPsi > 100) psiClass = 'status-unhealthy';
+            else if (centralPsi > 50) psiClass = 'status-moderate';
+            updateStatusItem('status-psi', `PSI: ${centralPsi}`, psiClass);
+        }
+
+        // UV
+        const uvRes = await fetch(UV_URL);
+        if (uvRes.ok) {
+            const uvData = await uvRes.json();
+            const latestUv = uvData.data.records[0].index[0].value;
+            let uvClass = 'status-good';
+            if (latestUv > 7) uvClass = 'status-unhealthy';
+            else if (latestUv > 2) uvClass = 'status-moderate';
+            updateStatusItem('status-uv', `UV: ${latestUv}`, uvClass);
+        }
+
+        // Now (2-hr)
+        const nowRes = await fetch(NOW_URL);
+        if (nowRes.ok) {
+            const nowData = await nowRes.json();
+            const forecasts = nowData.data.items[0].forecasts;
+            const centralForecast = forecasts.find(f => f.area === 'Central' || f.area === 'City' || f.area.includes('Museum')) || forecasts[0];
+            updateStatusItem('status-now', `Now: ${centralForecast.forecast} ${getWeatherIcon(centralForecast.forecast)}`);
+        }
+    } catch (e) {
+        console.warn('Environmental data fetch error:', e);
     }
-});
+};
 
 const createForecastCard = (forecast) => {
     const { day, forecast: weather, temperature, relativeHumidity, wind } = forecast;
@@ -88,25 +122,20 @@ const fetchWeather = async () => {
     const container = document.getElementById('forecast-container');
     const updateTime = document.getElementById('last-updated');
     
+    // Launch environmental fetches in background
+    fetchEnvironmentalData();
+
     try {
         const response = await fetch(API_URL);
+        if (!response.ok) throw new Error('API unstable');
         
-        let jsonData;
-        if (!response.ok) {
-            console.warn('API fetch failed, using mock data for demonstration.');
-            jsonData = getMockData();
-        } else {
-            jsonData = await response.json();
-        }
-
+        const jsonData = await response.json();
         const latestRecord = jsonData.data.records[0];
         const forecasts = latestRecord.forecasts;
         
-        // Clear container and update time
         container.innerHTML = '';
         updateTime.textContent = `Last synchronized: ${formatTimestamp(latestRecord.updatedTimestamp)}`;
         
-        // Populate forecast cards
         forecasts.slice(0, 4).forEach((forecast, index) => {
             const card = createForecastCard(forecast);
             card.style.animationDelay = `${index * 0.1}s`;
@@ -115,23 +144,13 @@ const fetchWeather = async () => {
 
     } catch (error) {
         console.error('Error fetching weather data:', error);
-        container.innerHTML = `
-            <div class="loader">
-                <p style="color: var(--accent-sunset);">Failed to load weather data. Using cached view.</p>
-            </div>
-        `;
-        // Fallback to mock data on network error
-        const mockData = getMockData();
-        const forecasts = mockData.data.records[0].forecasts;
-        container.innerHTML = '';
-        forecasts.forEach(forecast => {
-            container.appendChild(createForecastCard(forecast));
-        });
+        container.innerHTML = '<div class="loader"><p>Connection trouble. Retrying...</p></div>';
+        setTimeout(fetchWeather, 5000); // Retry soon
     }
 };
 
 // Initial Fetch
 document.addEventListener('DOMContentLoaded', fetchWeather);
 
-// Refresh every 30 minutes
-setInterval(fetchWeather, 30 * 60 * 1000);
+// Refresh everything every 15 minutes
+setInterval(fetchWeather, 15 * 60 * 1000);

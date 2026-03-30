@@ -5,6 +5,11 @@ const NOW_URL = 'https://api-open.data.gov.sg/v2/real-time/api/two-hr-forecast';
 const TEMP_URL = 'https://api-open.data.gov.sg/v2/real-time/api/air-temperature';
 const RAIN_URL = 'https://api-open.data.gov.sg/v2/real-time/api/rainfall';
 const LIGHTNING_URL = 'https://api-open.data.gov.sg/v2/real-time/api/weather?api=lightning';
+const TWENTY_FOUR_URL = 'https://api-open.data.gov.sg/v2/real-time/api/twenty-four-hr-forecast';
+
+// Global Data Persistence
+let horizonData = null;
+let currentAreaMetadata = [];
 
 // Global Map instances
 let map;
@@ -140,7 +145,63 @@ const fetchMapData = async () => {
             });
             mapMarkers.push(marker);
         });
+        currentAreaMetadata = nowData.area_metadata;
+        setupHorizonSlider();
     } catch (e) { console.warn('Map data error:', e); }
+};
+
+const setupHorizonSlider = () => {
+    const slider = document.getElementById('horizon-slider');
+    const label = document.getElementById('current-period-label');
+    if (!slider || !horizonData) return;
+
+    slider.oninput = () => {
+        const idx = parseInt(slider.value);
+        const period = horizonData.periods[idx];
+        const general = horizonData.general;
+        
+        const startTime = new Date(period.time.start).getHours();
+        const endTime = new Date(period.time.end).getHours();
+        label.textContent = `Horizon: ${startTime}:00 - ${endTime}:00`;
+
+        // Update Telemetry
+        document.getElementById('tele-wind').textContent = `${general.wind.speed.low}-${general.wind.speed.high} km/h ${general.wind.direction}`;
+        document.getElementById('tele-humid').textContent = `${general.relative_humidity.low}-${general.relative_humidity.high}%`;
+        document.getElementById('tele-temp').textContent = `${general.temperature.low}° / ${general.temperature.high}°`;
+
+        // Update Map Markers with regional forecast
+        mapMarkers.forEach((marker, i) => {
+            const area = currentAreaMetadata[i];
+            if (!area) return;
+            const region = getRegion(area.name);
+            const regionalForecast = period.regions[region];
+            if (regionalForecast) {
+                marker.setIcon(L.divIcon({
+                    className: 'area-weather-label',
+                    html: `<div>${getWeatherIcon(regionalForecast)}</div>`,
+                    iconSize: [30, 30]
+                }));
+                marker.getPopup().setContent(`
+                    <div class="map-popup-nova">
+                        <strong class="popup-title">${area.name}</strong>
+                        <div class="popup-status">Horizon Status: ${regionalForecast}</div>
+                        <div class="mono" style="font-size: 0.7rem; margin-top: 10px;">Period: ${startTime}:00 - ${endTime}:00</div>
+                    </div>
+                `);
+            }
+        });
+    };
+};
+
+const fetchHorizonData = async () => {
+    try {
+        const res = await fetch(TWENTY_FOUR_URL);
+        if (res.ok) {
+            const json = await res.json();
+            horizonData = json.data.items[0];
+            setupHorizonSlider();
+        }
+    } catch (e) {}
 };
 
 const setupLocateMe = () => {
@@ -214,7 +275,7 @@ const checkWeatherAlerts = async () => {
 const fetchWeather = async () => {
     const container = document.getElementById('forecast-container');
     const updateTime = document.getElementById('last-updated');
-    initMap(); fetchMapData(); setupLocateMe(); fetchEnvironmentalData(); checkWeatherAlerts();
+    initMap(); fetchMapData(); setupLocateMe(); fetchEnvironmentalData(); checkWeatherAlerts(); fetchHorizonData();
     try {
         const response = await fetch(API_URL);
         if (!response.ok) throw new Error();

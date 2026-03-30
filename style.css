@@ -178,6 +178,81 @@ h1 {
     background: var(--bg-color);
 }
 
+.horizon-control {
+    background: var(--bg-color);
+    border-top: var(--border-thin);
+    padding: 2.5rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.horizon-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.horizon-header .mono {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
+.metro-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--grid-line);
+    outline: none;
+    cursor: pointer;
+}
+
+.metro-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 60px;
+    height: 12px;
+    background: var(--accent-cyan);
+    border-radius: 0;
+    box-shadow: 10px 10px 0px rgba(0, 245, 255, 0.1);
+    transition: var(--transition-metro);
+}
+
+.metro-slider::-webkit-slider-thumb:hover {
+    height: 20px;
+    background: #fff;
+    box-shadow: 15px 15px 0px var(--accent-magenta);
+}
+
+.horizon-telemetry {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2.5rem;
+    border-top: 1px solid var(--grid-line);
+    padding-top: 2rem;
+}
+
+.tele-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tele-item .label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.15em;
+}
+
+.tele-item .val {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+}
+
 /* Forecast Grid & Cards */
 .forecast-grid {
     display: grid;

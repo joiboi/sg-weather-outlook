@@ -50,6 +50,29 @@
 
         <section class="overview-section">
             <div id="map" class="weather-map"></div>
+            
+            <div class="horizon-control">
+                <div class="horizon-header">
+                    <span class="mono">Atmospheric_Horizon / 24H_Control</span>
+                    <span id="current-period-label" class="mono accent-glow">Current_Status</span>
+                </div>
+                <input type="range" id="horizon-slider" min="0" max="2" value="0" step="1" class="metro-slider">
+                
+                <div id="horizon-telemetry" class="horizon-telemetry">
+                    <div class="tele-item">
+                        <span class="label">Wind_Velocity</span>
+                        <span id="tele-wind" class="val">-- km/h</span>
+                    </div>
+                    <div class="tele-item">
+                        <span class="label">Relative_Humidity</span>
+                        <span id="tele-humid" class="val">-- %</span>
+                    </div>
+                    <div class="tele-item">
+                        <span class="label">Thermal_Range</span>
+                        <span id="tele-temp" class="val">--° / --°</span>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <section id="forecast-container" class="forecast-grid">

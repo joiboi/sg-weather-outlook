@@ -2,8 +2,15 @@ const API_URL = 'https://api-open.data.gov.sg/v2/real-time/api/four-day-outlook'
 const PSI_URL = 'https://api-open.data.gov.sg/v2/real-time/api/psi';
 const UV_URL = 'https://api-open.data.gov.sg/v2/real-time/api/uv';
 const NOW_URL = 'https://api-open.data.gov.sg/v2/real-time/api/two-hr-forecast';
+const TEMP_URL = 'https://api-open.data.gov.sg/v2/real-time/api/weather?api=air-temperature';
+const RAIN_URL = 'https://api-open.data.gov.sg/v2/real-time/api/rainfall';
+const LIGHTNING_URL = 'https://api-open.data.gov.sg/v2/real-time/api/weather?api=lightning';
 
-// Helper function to map weather codes to emoji/icons
+// Global Map instances
+let map;
+let mapMarkers = [];
+
+// Improved Icon Mapping
 const getWeatherIcon = (code) => {
     const iconMap = {
         'PC': '⛅', // Partly Cloudy
@@ -11,24 +18,45 @@ const getWeatherIcon = (code) => {
         'TS': '⛈️', // Thundery Showers
         'CL': '☀️', // Clear
         'CD': '☁️', // Cloudy
-        'HR': '🌧️', // Heavy Rain
+        'OC': '☁️', // Overcast
+        'RA': '🌧️', // Rain
         'LR': '🌦️', // Light Rain
+        'HR': '🌧️', // Heavy Rain
         'SW': '🏖️', // Sunny
-        'FA': '🌤️', // Fair
+        'FA': '☀️', // Fair
     };
-    return iconMap[code.toUpperCase()] || iconMap[Object.keys(iconMap).find(k => code.toUpperCase().includes(k))] || '⛅';
+    const cleanCode = code.toUpperCase().trim();
+    if (iconMap[cleanCode]) return iconMap[cleanCode];
+
+    if (cleanCode.includes('THUNDERY')) return '⛈️';
+    if (cleanCode.includes('CLOUDY')) return '☁️';
+    if (cleanCode.includes('PARTLY CLOUDY')) return '⛅';
+    if (cleanCode.includes('SHOWER')) return '🌦️';
+    if (cleanCode.includes('RAIN')) return '🌧️';
+    if (cleanCode.includes('FAIR') || cleanCode.includes('CLEAR')) return '☀️';
+
+    return '⛅';
 };
 
-// Formats the timestamp for the "Last Updated" display
+const getRegion = (area) => {
+    const mapping = {
+        'north': ['Admiralty', 'Kranji', 'Woodlands', 'Sembawang', 'Yishun', 'Sungei Kadut', 'Mandai'],
+        'south': ['Bukit Merah', 'Queenstown', 'Telok Blangah', 'City', 'Sentosa', 'Southern Islands'],
+        'east': ['Bedok', 'Changi', 'Pasir Ris', 'Paya Lebar', 'Tampines', 'Pulau Ubin', 'Pulau Tekong'],
+        'west': ['Bukit Batok', 'Bukit Panjang', 'Choa Chu Kang', 'Clementi', 'Jurong East', 'Jurong West', 'Pioneer', 'Tengah', 'Tuas', 'Western Islands', 'Western Water Catchment', 'Boon Lay', 'Jurong Island'],
+        'central': ['Ang Mo Kio', 'Bishan', 'Bukit Timah', 'Geylang', 'Hougang', 'Kallang', 'Marine Parade', 'Newton', 'Novena', 'Orchard', 'Outram', 'Serangoon', 'Tanglin', 'Toa Payoh', 'Punggol', 'Sengkang', 'Whampoa', 'Tiong Bahru']
+    };
+    for (const [region, areas] of Object.entries(mapping)) {
+        if (areas.some(a => area.includes(a))) return region;
+    }
+    return 'central';
+};
+
 const formatTimestamp = (isoStr) => {
     const date = isoStr ? new Date(isoStr) : new Date();
     return date.toLocaleString('en-SG', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
     });
 };
 
@@ -36,241 +64,154 @@ const updateStatusItem = (id, text, className) => {
     const el = document.getElementById(id);
     if (!el) return;
     el.innerHTML = text;
-    el.className = 'status-item ' + (className || '');
+    if (className) el.className = 'status-item ' + className;
 };
 
-const fetchEnvironmentalData = async () => {
-    try {
-        // PSI
-        const psiRes = await fetch(PSI_URL);
-        if (psiRes.ok) {
-            const psiData = await psiRes.json();
-            const readings = psiData.data.items[0].readings.psi_twenty_four_hourly;
-            const centralPsi = readings.central;
-            let psiClass = 'status-good';
-            if (centralPsi > 100) psiClass = 'status-unhealthy';
-            else if (centralPsi > 50) psiClass = 'status-moderate';
-            updateStatusItem('status-psi', `PSI: ${centralPsi}`, psiClass);
-        }
-
-        // UV
-        const uvRes = await fetch(UV_URL);
-        if (uvRes.ok) {
-            const uvData = await uvRes.json();
-            const latestUv = uvData.data.records[0].index[0].value;
-            let uvClass = 'status-good';
-            if (latestUv > 7) uvClass = 'status-unhealthy';
-            else if (latestUv > 2) uvClass = 'status-moderate';
-            updateStatusItem('status-uv', `UV: ${latestUv}`, uvClass);
-        }
-
-        // Now (2-hr)
-        const nowRes = await fetch(NOW_URL);
-        if (nowRes.ok) {
-            const nowData = await nowRes.json();
-            const forecasts = nowData.data.items[0].forecasts;
-            const centralForecast = forecasts.find(f => f.area === 'Central' || f.area === 'City' || f.area.includes('Museum')) || forecasts[0];
-            updateStatusItem('status-now', `Now: ${centralForecast.forecast} ${getWeatherIcon(centralForecast.forecast)}`);
-        }
-    } catch (e) {
-        console.warn('Environmental data fetch error:', e);
-    }
-};
-
-let map;
-let mapMarkers = [];
-
+// Map & Geolocation Initialization
 const initMap = () => {
     if (map) return;
-    map = L.map('map', {
-        zoomControl: false,
-        attributionControl: false
-    }).setView([1.3521, 103.8198], 11);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19
-    }).addTo(map);
-
+    map = L.map('map', { zoomControl: false, attributionControl: false }).setView([1.3521, 103.8198], 11);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 };
 
 const fetchMapData = async () => {
     try {
-        const res = await fetch(NOW_URL);
-        if (!res.ok) return;
-        const data = await res.json();
-        const { area_metadata, items } = data.data;
-        const forecasts = items[0].forecasts;
+        const [nowRes, psiRes, uvRes, tempRes] = await Promise.all([
+            fetch(NOW_URL), fetch(PSI_URL), fetch(UV_URL), fetch(TEMP_URL)
+        ]);
 
-        // Clear old markers
+        if (!nowRes.ok) return;
+        const nowData = (await nowRes.json()).data;
+        const forecasts = nowData.items[0].forecasts;
+        
+        let regionalPsi = {};
+        if (psiRes.ok) regionalPsi = (await psiRes.json()).data.items[0].readings.psi_twenty_four_hourly;
+
+        let currentUv = '--';
+        if (uvRes.ok) currentUv = (await uvRes.json()).data.records[0].index[0].value;
+
+        let temps = [];
+        if (tempRes.ok) temps = (await tempRes.json()).data.items[0].readings;
+
         mapMarkers.forEach(m => map.removeLayer(m));
         mapMarkers = [];
 
-        area_metadata.forEach(area => {
+        nowData.area_metadata.forEach(area => {
             const forecast = forecasts.find(f => f.area === area.name);
             if (!forecast) return;
 
+            const region = getRegion(area.name);
+            const psi = regionalPsi[region] || '--';
+            
+            // Find nearby temperature (rough matching)
+            const areaTemp = temps.find(t => t.stationId.includes(area.name.substring(0, 4))) || temps[0];
+
             const icon = L.divIcon({
                 className: 'area-weather-label',
-                html: `<div>${area.name}</div><div>${getWeatherIcon(forecast.forecast)}</div>`,
-                iconSize: [80, 40]
+                html: `<div>${getWeatherIcon(forecast.forecast)}</div>`,
+                iconSize: [30, 30]
             });
 
             const marker = L.marker([area.label_location.latitude, area.label_location.longitude], { icon })
-                .bindPopup(`<strong>${area.name}</strong>: ${forecast.forecast}`)
+                .bindPopup(`
+                    <div style="font-family: inherit;">
+                        <strong style="font-size: 1.1rem; color: var(--accent-blue);">${area.name}</strong><br/>
+                        <div style="margin-top: 5px; line-height: 1.5;">
+                            <span>✨ ${forecast.forecast}</span><br/>
+                            <span>🌡️ Temp: ${areaTemp ? areaTemp.value : '--'}°C</span><br/>
+                            <span>😷 PSI: ${psi}</span><br/>
+                            <span>☀️ UV: ${currentUv}</span>
+                        </div>
+                    </div>
+                `)
                 .addTo(map);
-            
             mapMarkers.push(marker);
         });
-    } catch (e) {
-        console.warn('Map data error:', e);
-    }
+    } catch (e) { console.warn('Map data error:', e); }
 };
 
 const setupLocateMe = () => {
     const btn = document.getElementById('locate-btn');
-    btn.addEventListener('click', () => {
-        if (!navigator.geolocation) {
-            alert('Geolocation is not supported by your browser');
-            return;
-        }
-
+    if (!btn) return;
+    btn.onclick = () => {
+        if (!navigator.geolocation) return alert('Geolocation not supported');
         btn.innerHTML = '📍 Locating...';
         navigator.geolocation.getCurrentPosition(position => {
             const { latitude, longitude } = position.coords;
             map.setView([latitude, longitude], 13);
-            
-            L.circle([latitude, longitude], {
-                radius: 500,
-                color: 'var(--accent-blue)',
-                fillColor: 'var(--accent-blue)',
-                fillOpacity: 0.2
-            }).addTo(map).bindPopup('You are here!').openPopup();
-
+            L.circle([latitude, longitude], { radius: 500, color: 'var(--accent-blue)', fillOpacity: 0.2 }).addTo(map).bindPopup('You are here!').openPopup();
             btn.innerHTML = '📍 Relocate';
-        }, () => {
-            alert('Unable to retrieve your location');
-            btn.innerHTML = '📍 Locate Me';
-        });
-    });
+        }, () => { alert('Location access denied'); btn.innerHTML = '📍 Locate Me'; });
+    };
 };
 
-const createForecastCard = (forecast) => {
-    const { day, forecast: weather, temperature, relativeHumidity, wind } = forecast;
+const createForecastCard = (f) => {
     const card = document.createElement('div');
     card.className = 'forecast-card';
-    
     card.innerHTML = `
-        <div class="card-header">
-            <span class="day-name">${day}</span>
-            <span class="date-text">${weather.text}</span>
-        </div>
-        <div class="weather-icon-container">
-            <span style="font-size: 3rem;">${getWeatherIcon(weather.code)}</span>
-        </div>
-        <div class="weather-status">${weather.text}</div>
+        <div class="card-header"><span class="day-name">${f.day}</span><span class="date-text">${f.forecast.text}</span></div>
+        <div class="weather-icon-container"><span style="font-size: 3rem;">${getWeatherIcon(f.forecast.code)}</span></div>
+        <div class="weather-status">${f.forecast.text}</div>
         <div class="temp-range">
-            <div class="temp-item">
-                <span class="temp-val">${temperature.high}°C</span>
-                <span class="temp-label">High</span>
-            </div>
-            <div class="temp-item" style="opacity: 0.5;">
-                <span class="temp-val">|</span>
-            </div>
-            <div class="temp-item">
-                <span class="temp-val">${temperature.low}°C</span>
-                <span class="temp-label">Low</span>
-            </div>
-        </div>
-        <div class="meta-info">
-            <div class="meta-item">
-                <span class="meta-label">Humidity</span>
-                <span class="meta-val">${relativeHumidity.low}% - ${relativeHumidity.high}%</span>
-            </div>
-            <div class="meta-item">
-                <span class="meta-label">Wind</span>
-                <span class="meta-val">${wind.direction} ${wind.speed.low}-${wind.speed.high} km/h</span>
-            </div>
+            <div class="temp-item"><span class="temp-val">${f.temperature.high}°C</span></div>
+            <div class="temp-item" style="opacity: 0.5;"><span class="temp-val">|</span></div>
+            <div class="temp-item"><span class="temp-val">${f.temperature.low}°C</span></div>
         </div>
     `;
     return card;
 };
 
-const RAIN_URL = 'https://api-open.data.gov.sg/v2/real-time/api/rainfall';
-const LIGHTNING_URL = 'https://api-open.data.gov.sg/v2/real-time/api/weather?api=lightning';
+const fetchEnvironmentalData = async () => {
+    try {
+        const psiRes = await fetch(PSI_URL);
+        if (psiRes.ok) {
+            const val = (await psiRes.json()).data.items[0].readings.psi_twenty_four_hourly.central;
+            updateStatusItem('status-psi', `PSI: ${val}`, val > 100 ? 'status-unhealthy' : (val > 50 ? 'status-moderate' : 'status-good'));
+        }
+        const uvRes = await fetch(UV_URL);
+        if (uvRes.ok) {
+            const val = (await uvRes.json()).data.records[0].index[0].value;
+            updateStatusItem('status-uv', `UV: ${val}`, val > 7 ? 'status-unhealthy' : (val > 2 ? 'status-moderate' : 'status-good'));
+        }
+    } catch (e) {}
+};
 
 const checkWeatherAlerts = async () => {
     const banner = document.getElementById('alert-banner');
     const alertText = document.getElementById('alert-text');
     let alerts = [];
-
     try {
-        // Check Rain
-        const rainRes = await fetch(RAIN_URL);
-        if (rainRes.ok) {
-            const rainData = await rainRes.json();
-            const readings = rainData.data.items[0].readings;
-            const isRaining = readings.some(r => r.value > 0.5); // Threshold for alert
-            if (isRaining) alerts.push("Moderate to heavy rain detected.");
-        }
-
-        // Check Lightning
-        const lightningRes = await fetch(LIGHTNING_URL);
-        if (lightningRes.ok) {
-            const lightningData = await lightningRes.json();
-            const events = lightningData.data.items[0].readings || [];
-            if (events.length > 0) alerts.push("Lightning activity spotted.");
-        }
-
+        const [rainRes, lightRes] = await Promise.all([fetch(RAIN_URL), fetch(LIGHTNING_URL)]);
+        if (rainRes.ok && (await rainRes.json()).data.items[0].readings.some(r => r.value > 0.5)) alerts.push("Heavy rain detected.");
+        if (lightRes.ok && ((await lightRes.json()).data.items[0].readings || []).length > 0) alerts.push("Lightning spotted.");
+        
         if (alerts.length > 0) {
             alertText.textContent = alerts.join(" ") + " Stay safe!";
             banner.classList.remove('hidden');
-        } else {
-            banner.classList.add('hidden');
-        }
-    } catch (e) {
-        console.warn('Alerts fetch error:', e);
-    }
+        } else banner.classList.add('hidden');
+    } catch (e) {}
 };
 
 const fetchWeather = async () => {
     const container = document.getElementById('forecast-container');
     const updateTime = document.getElementById('last-updated');
-    
-    // Initialize Map and Locating
-    initMap();
-    fetchMapData();
-    setupLocateMe();
-
-    // Launch environmental fetches in background
-    fetchEnvironmentalData();
-    checkWeatherAlerts();
-
+    initMap(); fetchMapData(); setupLocateMe(); fetchEnvironmentalData(); checkWeatherAlerts();
     try {
         const response = await fetch(API_URL);
-        if (!response.ok) throw new Error('API unstable');
-        
-        const jsonData = await response.json();
-        const latestRecord = jsonData.data.records[0];
-        const forecasts = latestRecord.forecasts;
-        
+        if (!response.ok) throw new Error();
+        const latestRecord = (await response.json()).data.records[0];
         container.innerHTML = '';
         updateTime.textContent = `Last synchronized: ${formatTimestamp(latestRecord.updatedTimestamp)}`;
-        
-        forecasts.slice(0, 4).forEach((forecast, index) => {
-            const card = createForecastCard(forecast);
+        latestRecord.forecasts.slice(0, 4).forEach((f, index) => {
+            const card = createForecastCard(f);
             card.style.animationDelay = `${index * 0.1}s`;
             container.appendChild(card);
         });
-
     } catch (error) {
-        console.error('Error fetching weather data:', error);
         container.innerHTML = '<div class="loader"><p>Connection trouble. Retrying...</p></div>';
     }
 };
 
-// Initial Fetch
 document.addEventListener('DOMContentLoaded', fetchWeather);
-
-// Refresh everything every 15 minutes
 setInterval(fetchWeather, 15 * 60 * 1000);

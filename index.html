@@ -14,34 +14,38 @@
 </head>
 <body>
     <div id="alert-banner" class="alert-banner hidden">
-        <span class="alert-icon">⚠️</span>
-        <span id="alert-text">Heavy rain or lightning detected in your area.</span>
+        <span class="alert-icon">SYSTEM_ALERT:</span>
+        <span id="alert-text">Atmospheric disturbance detected.</span>
     </div>
 
-    <div class="background-blobs">
-        <div class="blob blob-1"></div>
-        <div class="blob blob-2"></div>
-        <div class="blob blob-3"></div>
+    <div class="metropolitan-grid">
+        <div class="metropolitan-grid-line"></div>
+        <div class="metropolitan-grid-line"></div>
+        <div class="metropolitan-grid-line"></div>
+        <div class="metropolitan-grid-line"></div>
+        <div class="metropolitan-grid-line"></div>
+        <div class="metropolitan-grid-line"></div>
     </div>
 
     <main class="container">
         <header>
-            <h1 id="main-title">Weather Nova</h1>
-            <p class="subtitle">Singapore Horizon</p>
+            <p class="mono accent-glow" style="margin-bottom: 1rem;">Live Telemetry / Singapore</p>
+            <h1 id="main-title">Weather<br/>Nova</h1>
+            <p class="subtitle">Architectural Climate Intelligence</p>
             
             <div id="status-bar" class="status-bar">
                 <div class="status-item" id="status-psi">
-                    <span>😷</span>
-                    <span id="psi-val">PSI: --</span>
+                    <span>Index / PSI:</span>
+                    <b id="psi-val">--</b>
                 </div>
                 <div class="status-item" id="status-uv">
-                    <span>☀️</span>
-                    <span id="uv-val">UV: --</span>
+                    <span>System / UV:</span>
+                    <b id="uv-val">--</b>
                 </div>
-                <button id="locate-btn" class="status-item highlight">📍 Find My View</button>
+                <button id="locate-btn" class="status-item highlight">Locate Node</button>
             </div>
             
-            <div id="last-updated" class="last-updated">Updating telemetry...</div>
+            <div id="last-updated" class="last-updated">Status: Checking...</div>
         </header>
 
         <section class="overview-section">
@@ -49,18 +53,20 @@
         </section>
 
         <section id="forecast-container" class="forecast-grid">
-            <!-- Forecast cards will be injected here -->
             <div class="loader">
-                <div class="spinner"></div>
-                <p>Fetching latest weather data...</p>
+                <p>Establishing Link...</p>
             </div>
         </section>
 
         <footer>
-            <p>Data provided by <a href="https://data.gov.sg" target="_blank" rel="noopener noreferrer">data.gov.sg</a></p>
+            <p>© 2026 Architectural Climate Intelligence / Data gov.sg</p>
+            <div style="display: flex; gap: 2rem;">
+                <a href="#" class="mono" style="font-size: 0.6rem;">Archive</a>
+                <a href="#" class="mono" style="font-size: 0.6rem;">Protocol</a>
+            </div>
         </footer>
     </main>
 
-    <script src="script.js?v=1.1"></script>
+    <script src="script.js?v=2.0"></script>
 </body>
 </html>

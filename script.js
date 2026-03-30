@@ -163,10 +163,8 @@ const createForecastCard = (f) => {
     card.className = 'forecast-card';
     card.innerHTML = `
         <div class="card-header">
-            <div style="display: flex; flex-direction: column;">
-                <span class="day-name">${f.day}</span>
-                <span class="date-text">${f.forecast.text}</span>
-            </div>
+            <span class="day-name">${f.day}</span>
+            <span class="date-text">${f.forecast.text}</span>
         </div>
         <div class="weather-icon-container">
             <span>${getWeatherIcon(f.forecast.code)}</span>
@@ -175,12 +173,11 @@ const createForecastCard = (f) => {
         <div class="temp-range">
             <div class="temp-item">
                 <span class="temp-val">${f.temperature.high}°</span>
-                <span class="temp-label">High</span>
+                <span class="temp-label">Max_Thermal</span>
             </div>
-            <div class="temp-divider"></div>
             <div class="temp-item">
                 <span class="temp-val">${f.temperature.low}°</span>
-                <span class="temp-label">Low</span>
+                <span class="temp-label">Min_Thermal</span>
             </div>
         </div>
     `;
@@ -210,7 +207,7 @@ const checkWeatherAlerts = async () => {
         const [rainRes, lightRes] = await Promise.all([fetch(RAIN_URL), fetch(LIGHTNING_URL)]);
         if (rainRes.ok && (await rainRes.json()).data.items[0].readings.some(r => r.value > 0.5)) alerts.push("Heavy rain detected.");
         if (lightRes.ok && ((await lightRes.json()).data.items[0].readings || []).length > 0) alerts.push("Lightning spotted.");
-        if (alerts.length > 0) { alertText.textContent = alerts.join(" ") + " Stay safe!"; banner.classList.remove('hidden'); } else banner.classList.add('hidden');
+        if (alerts.length > 0) { alertText.textContent = "CRITICAL_STATUS: " + alerts.join(" ") + " SYSTEM_ALERT_ACTIVE."; banner.classList.remove('hidden'); } else banner.classList.add('hidden');
     } catch (e) {}
 };
 
@@ -223,7 +220,7 @@ const fetchWeather = async () => {
         if (!response.ok) throw new Error();
         const latestRecord = (await response.json()).data.records[0];
         container.innerHTML = '';
-        updateTime.textContent = `Telemetry synced: ${formatTimestamp(latestRecord.updatedTimestamp)}`;
+        updateTime.textContent = `System Active / Global Sync: ${formatTimestamp(latestRecord.updatedTimestamp)}`;
         latestRecord.forecasts.slice(0, 4).forEach((f, index) => {
             const card = createForecastCard(f);
             card.style.animationDelay = `${index * 0.1}s`;

@@ -116,19 +116,39 @@ const fetchMapData = async () => {
                         fetch(PSI_URL), fetch(UV_URL), fetch(TEMP_URL)
                     ]);
 
-                    const regionalPsi = (await psiRes.json()).data.items[0].readings.psi_twenty_four_hourly;
-                    const currentUv = (await uvRes.json()).data.records[0].index[0].value;
-                    const temps = (await tempRes.json()).data.items[0].readings;
+                    const psiData = await psiRes.json();
+                    const uvData = await uvRes.json();
+                    const tempJson = await tempRes.json();
 
+                    const regionalPsi = psiData.data.items[0].readings.psi_twenty_four_hourly;
+                    const currentUv = uvData.data.records[0].index[0].value;
+                    const temps = tempJson.data.items[0].readings;
+                    const stations = tempJson.data.metadata.stations;
+
+                    // Proximity-based matching for Temperature
+                    const getDistance = (lat1, lon1, lat2, lon2) => {
+                        return Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lon2 - lon1, 2));
+                    };
+
+                    let closestStation = stations[0];
+                    let minDistance = Infinity;
+                    stations.forEach(s => {
+                        const dist = getDistance(area.label_location.latitude, area.label_location.longitude, s.location.latitude, s.location.longitude);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            closestStation = s;
+                        }
+                    });
+
+                    const areaTemp = temps.find(t => t.stationId === closestStation.id) || temps[0];
                     const region = getRegion(area.name);
                     const psi = regionalPsi[region] || '--';
-                    const areaTemp = temps.find(t => t.stationId.includes(area.name.substring(0, 4))) || temps[0];
 
                     const detailsHtml = `
                         <div class="popup-details" style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; line-height: 1.5;">
-                            <span>🌡️ Temp: ${areaTemp ? areaTemp.value : '--'}°C</span><br/>
-                            <span>😷 PSI: ${psi}</span><br/>
-                            <span>☀️ UV: ${currentUv}</span>
+                            <span>🌡️ ${closestStation.name}: ${areaTemp ? areaTemp.value : '--'}°C</span><br/>
+                            <span>😷 ${region.toUpperCase()} PSI: ${psi}</span><br/>
+                            <span>☀️ UV Index: ${currentUv}</span>
                         </div>
                     `;
                     

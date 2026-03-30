@@ -49,10 +49,11 @@ const formatTimestamp = (isoStr) => {
     });
 };
 
-const updateStatusItem = (id, text, className) => {
+const updateStatusItem = (id, valId, text, className) => {
     const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = text;
+    const valEl = document.getElementById(valId);
+    if (!el || !valEl) return;
+    valEl.textContent = text;
     if (className) el.className = 'status-item ' + className;
 };
 
@@ -85,10 +86,10 @@ const fetchMapData = async () => {
 
             const marker = L.marker([area.label_location.latitude, area.label_location.longitude], { icon })
                 .bindPopup(`
-                    <div id="popup-${area.name.replace(/\s+/g, '-')}" style="font-family: inherit; min-width: 140px;">
-                        <strong style="font-size: 1.1rem; color: var(--accent-blue);">${area.name}</strong><br/>
-                        <div style="margin-top: 5px; color: var(--text-secondary);">✨ ${forecast.forecast}</div>
-                        <div class="popup-loading" style="font-size: 0.8rem; margin-top: 5px; opacity: 0.6;">Loading local climate...</div>
+                    <div id="popup-${area.name.replace(/\s+/g, '-')}" class="map-popup-nova">
+                        <strong class="popup-title">${area.name}</strong>
+                        <div class="popup-status">✨ ${forecast.forecast}</div>
+                        <div class="popup-loading">Loading telemetry...</div>
                     </div>
                 `)
                 .addTo(map);
@@ -126,9 +127,9 @@ const fetchMapData = async () => {
                     const psi = regionalPsi[region] || '--';
 
                     const detailsHtml = `
-                        <div class="popup-details" style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; line-height: 1.5;">
-                            <span>🌡️ ${closestStation.name}: ${areaTemp ? areaTemp.value : '--'}°C</span><br/>
-                            <span>😷 ${region.toUpperCase()} PSI: ${psi}</span><br/>
+                        <div class="popup-details">
+                            <span>🌡️ ${closestStation.name}: ${areaTemp ? areaTemp.value : '--'}°C</span>
+                            <span>😷 ${region.toUpperCase()} PSI: ${psi}</span>
                             <span>☀️ UV Index: ${currentUv}</span>
                         </div>
                     `;
@@ -161,13 +162,26 @@ const createForecastCard = (f) => {
     const card = document.createElement('div');
     card.className = 'forecast-card';
     card.innerHTML = `
-        <div class="card-header"><span class="day-name">${f.day}</span><span class="date-text">${f.forecast.text}</span></div>
-        <div class="weather-icon-container"><span style="font-size: 3rem;">${getWeatherIcon(f.forecast.code)}</span></div>
+        <div class="card-header">
+            <div style="display: flex; flex-direction: column;">
+                <span class="day-name">${f.day}</span>
+                <span class="date-text">${f.forecast.text}</span>
+            </div>
+        </div>
+        <div class="weather-icon-container">
+            <span>${getWeatherIcon(f.forecast.code)}</span>
+        </div>
         <div class="weather-status">${f.forecast.text}</div>
         <div class="temp-range">
-            <div class="temp-item"><span class="temp-val">${f.temperature.high}°C</span></div>
-            <div class="temp-item" style="opacity: 0.5;"><span class="temp-val">|</span></div>
-            <div class="temp-item"><span class="temp-val">${f.temperature.low}°C</span></div>
+            <div class="temp-item">
+                <span class="temp-val">${f.temperature.high}°</span>
+                <span class="temp-label">High</span>
+            </div>
+            <div class="temp-divider"></div>
+            <div class="temp-item">
+                <span class="temp-val">${f.temperature.low}°</span>
+                <span class="temp-label">Low</span>
+            </div>
         </div>
     `;
     return card;
@@ -178,12 +192,12 @@ const fetchEnvironmentalData = async () => {
         const psiRes = await fetch(PSI_URL);
         if (psiRes.ok) {
             const val = (await psiRes.json()).data.items[0].readings.psi_twenty_four_hourly.central;
-            updateStatusItem('status-psi', `PSI: ${val}`, val > 100 ? 'status-unhealthy' : (val > 50 ? 'status-moderate' : 'status-good'));
+            updateStatusItem('status-psi', 'psi-val', `PSI: ${val}`, val > 100 ? 'status-unhealthy' : (val > 50 ? 'status-moderate' : 'status-good'));
         }
         const uvRes = await fetch(UV_URL);
         if (uvRes.ok) {
             const val = (await uvRes.json()).data.records[0].index[0].value;
-            updateStatusItem('status-uv', `UV: ${val}`, val > 7 ? 'status-unhealthy' : (val > 2 ? 'status-moderate' : 'status-good'));
+            updateStatusItem('status-uv', 'uv-val', `UV: ${val}`, val > 7 ? 'status-unhealthy' : (val > 2 ? 'status-moderate' : 'status-good'));
         }
     } catch (e) {}
 };
@@ -209,7 +223,7 @@ const fetchWeather = async () => {
         if (!response.ok) throw new Error();
         const latestRecord = (await response.json()).data.records[0];
         container.innerHTML = '';
-        updateTime.textContent = `Last synchronized: ${formatTimestamp(latestRecord.updatedTimestamp)}`;
+        updateTime.textContent = `Telemetry synced: ${formatTimestamp(latestRecord.updatedTimestamp)}`;
         latestRecord.forecasts.slice(0, 4).forEach((f, index) => {
             const card = createForecastCard(f);
             card.style.animationDelay = `${index * 0.1}s`;

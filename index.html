@@ -26,16 +26,22 @@
 
     <main class="container">
         <header>
-            <h1 id="main-title">Singapore Weather Outlook</h1>
-            <p class="subtitle">4-Day Real-Time Forecast</p>
+            <h1 id="main-title">Weather Nova</h1>
+            <p class="subtitle">Singapore Horizon</p>
             
             <div id="status-bar" class="status-bar">
-                <div class="status-item" id="status-psi">PSI: --</div>
-                <div class="status-item" id="status-uv">UV: --</div>
-                <button id="locate-btn" class="status-item highlight">📍 Locate Me</button>
+                <div class="status-item" id="status-psi">
+                    <span>😷</span>
+                    <span id="psi-val">PSI: --</span>
+                </div>
+                <div class="status-item" id="status-uv">
+                    <span>☀️</span>
+                    <span id="uv-val">UV: --</span>
+                </div>
+                <button id="locate-btn" class="status-item highlight">📍 Find My View</button>
             </div>
             
-            <div id="last-updated" class="last-updated">Updating...</div>
+            <div id="last-updated" class="last-updated">Updating telemetry...</div>
         </header>
 
         <section class="overview-section">

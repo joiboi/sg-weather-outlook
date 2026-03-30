@@ -77,6 +77,84 @@ const fetchEnvironmentalData = async () => {
     }
 };
 
+let map;
+let mapMarkers = [];
+
+const initMap = () => {
+    if (map) return;
+    map = L.map('map', {
+        zoomControl: false,
+        attributionControl: false
+    }).setView([1.3521, 103.8198], 11);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19
+    }).addTo(map);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+};
+
+const fetchMapData = async () => {
+    try {
+        const res = await fetch(NOW_URL);
+        if (!res.ok) return;
+        const data = await res.json();
+        const { area_metadata, items } = data.data;
+        const forecasts = items[0].forecasts;
+
+        // Clear old markers
+        mapMarkers.forEach(m => map.removeLayer(m));
+        mapMarkers = [];
+
+        area_metadata.forEach(area => {
+            const forecast = forecasts.find(f => f.area === area.name);
+            if (!forecast) return;
+
+            const icon = L.divIcon({
+                className: 'area-weather-label',
+                html: `<div>${area.name}</div><div>${getWeatherIcon(forecast.forecast)}</div>`,
+                iconSize: [80, 40]
+            });
+
+            const marker = L.marker([area.label_location.latitude, area.label_location.longitude], { icon })
+                .bindPopup(`<strong>${area.name}</strong>: ${forecast.forecast}`)
+                .addTo(map);
+            
+            mapMarkers.push(marker);
+        });
+    } catch (e) {
+        console.warn('Map data error:', e);
+    }
+};
+
+const setupLocateMe = () => {
+    const btn = document.getElementById('locate-btn');
+    btn.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser');
+            return;
+        }
+
+        btn.innerHTML = '📍 Locating...';
+        navigator.geolocation.getCurrentPosition(position => {
+            const { latitude, longitude } = position.coords;
+            map.setView([latitude, longitude], 13);
+            
+            L.circle([latitude, longitude], {
+                radius: 500,
+                color: 'var(--accent-blue)',
+                fillColor: 'var(--accent-blue)',
+                fillOpacity: 0.2
+            }).addTo(map).bindPopup('You are here!').openPopup();
+
+            btn.innerHTML = '📍 Relocate';
+        }, () => {
+            alert('Unable to retrieve your location');
+            btn.innerHTML = '📍 Locate Me';
+        });
+    });
+};
+
 const createForecastCard = (forecast) => {
     const { day, forecast: weather, temperature, relativeHumidity, wind } = forecast;
     const card = document.createElement('div');
@@ -159,6 +237,11 @@ const fetchWeather = async () => {
     const container = document.getElementById('forecast-container');
     const updateTime = document.getElementById('last-updated');
     
+    // Initialize Map and Locating
+    initMap();
+    fetchMapData();
+    setupLocateMe();
+
     // Launch environmental fetches in background
     fetchEnvironmentalData();
     checkWeatherAlerts();
@@ -183,7 +266,6 @@ const fetchWeather = async () => {
     } catch (error) {
         console.error('Error fetching weather data:', error);
         container.innerHTML = '<div class="loader"><p>Connection trouble. Retrying...</p></div>';
-        setTimeout(fetchWeather, 5000); // Retry soon
     }
 };
 

@@ -178,9 +178,63 @@ h1 {
     transform: translateY(-2px);
 }
 
+.status-item.highlight {
+    background: var(--accent-blue);
+    color: var(--bg-color);
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.status-item.highlight:hover {
+    background: #fff;
+    transform: translateY(-2px) scale(1.05);
+}
+
 .status-good { color: var(--accent-mint); text-shadow: 0 0 10px rgba(45, 212, 191, 0.3); }
 .status-moderate { color: var(--accent-gold); text-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
 .status-unhealthy { color: var(--accent-sunset); text-shadow: 0 0 10px rgba(244, 114, 182, 0.3); }
+
+/* Weather Map */
+.overview-section {
+    width: 100%;
+}
+
+.weather-map {
+    height: 400px;
+    width: 100%;
+    border-radius: 24px;
+    border: 1px solid var(--card-border);
+    background: var(--card-bg);
+    overflow: hidden;
+    z-index: 10;
+}
+
+/* Custom Map Popup Styling */
+.leaflet-popup-content-wrapper {
+    background: rgba(15, 23, 42, 0.9) !important;
+    backdrop-filter: blur(8px);
+    color: #fff !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.leaflet-popup-tip {
+    background: rgba(15, 23, 42, 0.9) !important;
+}
+
+.area-weather-label {
+    text-align: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    border-radius: 8px;
+    padding: 4px 8px;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    pointer-events: none;
+    white-space: nowrap;
+}
 
 /* Forecast Grid & Cards */
 .forecast-grid {
@@ -380,6 +434,11 @@ footer a:hover {
     .last-updated {
         margin-top: 0.25rem;
         font-size: 0.7rem;
+    }
+
+    .weather-map {
+        height: 200px;
+        margin-bottom: 0.5rem;
     }
 
     .forecast-grid {

@@ -289,76 +289,119 @@ footer a:hover {
     color: #fff;
 }
 
-/* Mobile Optimizations */
+/* Ultra-Compact Mobile Optimizations (to fit 4 days on iPhone screen) */
 @media (max-width: 768px) {
     body {
-        padding: 1.5rem 1rem;
+        padding: 1rem;
         align-items: flex-start;
+        height: 100vh;
+        overflow: hidden; /* Prevent body scrolling if possible */
     }
 
     .container {
-        gap: 2rem;
+        gap: 1rem;
+        height: calc(100vh - 2rem);
+    }
+
+    header {
+        margin-bottom: 0.5rem;
     }
 
     h1 {
-        font-size: 2.5rem;
-        line-height: 1.1;
+        font-size: 1.75rem;
+        margin-bottom: 0.25rem;
     }
 
     .subtitle {
-        font-size: 1rem;
+        font-size: 0.8rem;
+    }
+
+    .last-updated {
+        margin-top: 0.25rem;
+        font-size: 0.7rem;
     }
 
     .forecast-grid {
         grid-template-columns: 1fr;
-        gap: 1rem;
+        gap: 0.5rem;
+        height: auto;
+        flex: 1; /* Take up remaining space */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
     .forecast-card {
-        padding: 1.5rem;
-        gap: 1.25rem;
+        padding: 0.75rem 1rem;
+        gap: 0.75rem;
+        flex-direction: row; /* Horizontal layout for list style */
+        align-items: center;
+        justify-content: space-between;
+        min-height: 80px; /* Force small height */
+        border-radius: 16px;
+    }
+
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        min-width: 70px;
     }
 
     .day-name {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
+    }
+
+    .date-text {
+        font-size: 0.7rem;
     }
 
     .weather-icon-container {
-        height: 60px;
+        height: 40px;
+        margin: 0;
     }
 
     .weather-status {
-        font-size: 1.1rem;
-        min-height: 2.5rem;
+        display: none; /* Hide status text on small screens as icon + desc is enough */
     }
 
     .temp-range {
-        padding: 0.75rem 1rem;
+        background: none;
+        padding: 0;
+        gap: 0.5rem;
+        min-width: 80px;
+    }
+
+    .temp-item {
+        flex-direction: row;
+        gap: 0.25rem;
     }
 
     .temp-val {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
     }
-}
 
-@media (max-width: 480px) {
-    h1 {
-        font-size: 2rem;
+    .temp-label {
+        display: none; /* Hide labels "High/Low" to save space */
     }
 
     .meta-info {
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-        text-align: center;
+        display: none; /* Hide humidity/wind details in main view to save space */
     }
 
-    .meta-item {
-        align-items: center;
+    footer {
+        padding: 1rem 0 0.5rem 0;
+        font-size: 0.7rem;
     }
 
     .blob {
-        width: 300px;
-        height: 300px;
-        filter: blur(50px);
+        width: 200px;
+        height: 200px;
+        filter: blur(40px);
     }
+}
+
+@media (max-height: 700px) {
+    h1 { font-size: 1.5rem; }
+    .container { gap: 0.5rem; }
+    .forecast-card { min-height: 70px; padding: 0.5rem 0.75rem; }
 }

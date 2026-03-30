@@ -156,13 +156,21 @@ const setupHorizonSlider = () => {
     if (!slider || !horizonData) return;
 
     slider.oninput = () => {
-        const idx = parseInt(slider.value);
-        const period = horizonData.periods[idx];
-        const general = horizonData.general;
+        const hoursAhead = parseInt(slider.value);
+        const targetTime = new Date();
+        targetTime.setHours(targetTime.getHours() + hoursAhead);
         
-        const startTime = new Date(period.time.start).getHours();
-        const endTime = new Date(period.time.end).getHours();
-        label.textContent = `Horizon: ${startTime}:00 - ${endTime}:00`;
+        // Find which period this hour belongs to
+        const period = horizonData.periods.find(p => {
+            const start = new Date(p.time.start);
+            const end = new Date(p.time.end);
+            return targetTime >= start && targetTime < end;
+        }) || horizonData.periods[0]; // Fallback to first if out of bounds
+
+        const general = horizonData.general;
+        const displayHour = targetTime.getHours();
+        const displayDay = targetTime.toLocaleDateString('en-SG', { weekday: 'short' });
+        label.textContent = `Horizon: ${displayDay} ${displayHour}:00 (${hoursAhead}H Ahead)`;
 
         // Update Telemetry
         document.getElementById('tele-wind').textContent = `${general.wind.speed.low}-${general.wind.speed.high} km/h ${general.wind.direction}`;
@@ -185,12 +193,13 @@ const setupHorizonSlider = () => {
                     <div class="map-popup-nova">
                         <strong class="popup-title">${area.name}</strong>
                         <div class="popup-status">Horizon Status: ${regionalForecast}</div>
-                        <div class="mono" style="font-size: 0.7rem; margin-top: 10px;">Period: ${startTime}:00 - ${endTime}:00</div>
+                        <div class="mono" style="font-size: 0.7rem; margin-top: 10px;">Relative Time: ${displayHour}:00</div>
                     </div>
                 `);
             }
         });
     };
+    slider.oninput(); // Initial run
 };
 
 const fetchHorizonData = async () => {
